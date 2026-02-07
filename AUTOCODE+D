@@ -1,0 +1,181 @@
+#region VEXcode Generated Robot Configuration
+# ------------------------------------------
+# 
+# 	Project:      241C Robotics Code
+#	Author:       Heer Patel
+#	Created:      11/8/2025
+#	Description:  Vex autonmous and driver code for Pushback
+# 
+# ------------------------------------------
+from vex import *
+import urandom
+import math
+
+# Brain should be defined by default
+brain=Brain()
+controller=Controller()
+
+# Robot configuration code
+
+
+# wait for rotation sensor to fully initialize
+wait(30, MSEC)
+
+
+# Make random actually random
+def initializeRandomSeed():
+    wait(100, MSEC)
+    random = brain.battery.voltage(MV) + brain.battery.current(CurrentUnits.AMP) * 100 + brain.timer.system_high_res()
+    urandom.seed(int(random))
+      
+# Set random seed 
+initializeRandomSeed()
+
+
+def play_vexcode_sound(sound_name):
+    print("VEXPlaySound:" + sound_name)
+    wait(5, MSEC)
+
+# add a small delay to make sure we don't print in the middle of the REPL header
+wait(200, MSEC)
+# clear the console to make sure we don't have the REPL in the console
+print("\033[2J")
+
+# ===============================
+# USER CONFIGURATION
+# ===============================
+
+controller = Controller()
+
+# Drive Motors
+left_motors = MotorGroup(
+    Motor(Ports.PORT11, GearSetting.RATIO_18_1, False),
+    Motor(Ports.PORT12, GearSetting.RATIO_18_1, False),
+    Motor(Ports.PORT13, GearSetting.RATIO_18_1, False)
+)
+
+right_motors = MotorGroup(
+    Motor(Ports.PORT1, GearSetting.RATIO_18_1, True),
+    Motor(Ports.PORT2, GearSetting.RATIO_18_1, True),
+    Motor(Ports.PORT3, GearSetting.RATIO_18_1, True)
+)
+
+# Arm and Lift Motors
+arm_motor = Motor(Ports.PORT4, GearSetting.RATIO_18_1, False)   # R1/R2 control
+lift_motor = Motor(Ports.PORT17, GearSetting.RATIO_18_1, False) # L1/L2 control
+
+# Set stopping mode for precise control
+left_motors.set_stopping(BRAKE)
+right_motors.set_stopping(BRAKE)
+arm_motor.set_stopping(HOLD)
+lift_motor.set_stopping(HOLD)
+
+# ===============================
+# RANDOM SEED INITIALIZATION
+# ===============================
+def initializeRandomSeed():
+    wait(100, MSEC)
+    seed = brain.battery.voltage(MV) + brain.battery.current(CurrentUnits.AMP) * 100 + brain.timer.system_high_res()
+    urandom.seed(int(seed))
+
+initializeRandomSeed()
+
+# ===============================
+# HELPER FUNCTION
+# ===============================
+def play_vexcode_sound(sound_name):
+    print("VEXPlaySound:" + sound_name)
+    wait(5, MSEC)
+
+# ===============================
+# PRE-AUTONOMOUS
+# ===============================
+def pre_auton():
+    brain.screen.print("Pre-Autonomous Code Running")
+    brain.screen.new_line()
+    brain.screen.print("Initializing robot...")
+    wait(1, SECONDS)
+    brain.screen.clear_screen()
+    brain.screen.print("Ready for Competition")
+
+# ===============================
+# AUTONOMOUS
+# ===============================
+def autonomous():
+    brain.screen.clear_screen()
+    brain.screen.print("Autonomous: Driving Forward 6 inches")
+
+    # Convert 6 inches to motor degrees (4" wheel: 1 rev = 12.566")
+    degrees_to_drive = round((6 / 12.566) * 360)
+
+    left_motors.spin_for(FORWARD, degrees_to_drive, DEGREES, 50, PERCENT, False)
+    right_motors.spin_for(FORWARD, degrees_to_drive, DEGREES, 50, PERCENT, True)
+
+    left_motors.stop(BRAKE)
+    right_motors.stop(BRAKE)
+
+    brain.screen.new_line()
+    brain.screen.print("Autonomous Complete")
+
+# ===============================
+# DRIVER CONTROL
+# ===============================
+def usercontrol():
+    brain.screen.clear_screen()
+    brain.screen.print("Driver Control Active")
+
+    while True:
+        # --- Arcade Drive ---
+        forward = -controller.axis3.position()
+        turn = -controller.axis1.position()
+
+        # Deadband
+        if abs(forward) < 5:
+            forward = 0
+        if abs(turn) < 5:
+            turn = 0
+
+        left_speed = forward + turn
+        right_speed = forward - turn
+
+        # Clamp speed to [-100, 100]
+        left_speed = max(min(left_speed, 100), -100)
+        right_speed = max(min(right_speed, 100), -100)
+
+        left_motors.spin(FORWARD, left_speed, PERCENT)
+        right_motors.spin(FORWARD, right_speed, PERCENT)
+
+        # --- Arm Motor (R1/R2) ---
+        if controller.buttonR2.pressing():
+            arm_motor.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonR1.pressing():
+            arm_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            arm_motor.stop(HOLD)
+
+        # --- Lift Motor (L1/L2) ---
+        if controller.buttonL2.pressing():
+            lift_motor.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonL1.pressing():
+            lift_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            lift_motor.stop(HOLD)
+
+        wait(0.02, SECONDS)
+
+# ===============================
+# COMPETITION CALLBACKS
+# ==============================
+
+# ===============================
+# COMPETITION OBJECT (VEX Python)
+# ===============================
+competition = Competition(usercontrol, autonomous)
+
+# Run pre-auton once
+pre_auton()
+
+# Keep program alive
+while True:
+    wait(1, SECONDS)
+#endregion
