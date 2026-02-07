@@ -1,0 +1,73 @@
+#region VEXcode Generated Robot Configuration
+# ------------------------------------------
+# 
+# 	Project:      241C Robotics Code
+#	Author:       Heer Patel
+#	Created:      11/18/2025
+#	Description:  Vex autonmous and driver code for Pushback
+# 
+# ------------------------------------------
+from vex import *
+import urandom
+import math
+
+# Brain should be defined by default
+brain=Brain()
+controller=Controller()
+
+# Robot configuration code
+
+
+# wait for rotation sensor to fully initialize
+wait(30, MSEC)
+
+
+# Make random actually random
+def initializeRandomSeed():
+    wait(100, MSEC)
+    random = brain.battery.voltage(MV) + brain.battery.current(CurrentUnits.AMP) * 100 + brain.timer.system_high_res()
+    urandom.seed(int(random))
+      
+# Set random seed 
+initializeRandomSeed()
+
+
+def play_vexcode_sound(sound_name):
+    print("VEXPlaySound:" + sound_name)
+    wait(5, MSEC)
+
+# add a small delay to make sure we don't print in the middle of the REPL header
+wait(200, MSEC)
+# clear the console to make sure we don't have the REPL in the console
+print("\033[2J")
+
+# Left and right motor groups
+left_motors = MotorGroup(Motor(Ports.PORT11, GearSetting.RATIO_18_1, False),
+                         Motor(Ports.PORT12, GearSetting.RATIO_18_1, False),
+                         Motor(Ports.PORT13, GearSetting.RATIO_18_1, False))
+
+right_motors = MotorGroup(Motor(Ports.PORT1, GearSetting.RATIO_18_1, True),
+                          Motor(Ports.PORT2, GearSetting.RATIO_18_1, True),
+                          Motor(Ports.PORT3, GearSetting.RATIO_18_1, True))
+
+controller = Controller()
+
+def when_started1():
+    # Arcade drive loop with inverted controls
+    while True:
+        # Get joystick values
+        forward = -controller.axis3.position()  # Invert forward/backward
+        turn = -controller.axis1.position()     # Invert left/right turning
+
+        # Calculate motor speeds
+        left_speed = forward + turn
+        right_speed = forward - turn
+
+        # Set motor speeds
+        left_motors.spin(FORWARD, left_speed, PERCENT)
+        right_motors.spin(FORWARD, right_speed, PERCENT)
+
+        wait(0.02, SECONDS)  # Small delay to prevent CPU overload
+
+when_started1()
+
