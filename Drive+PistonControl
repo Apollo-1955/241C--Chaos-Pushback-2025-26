@@ -1,0 +1,129 @@
+#region VEXcode Generated Robot Configuration
+# ------------------------------------------
+# 
+# 	Project:      241C Robotics Code
+#	Author:       Heer Patel
+#	Created:      12/12/2025
+#	Description:  Vex autonmous and driver code for Pushback
+# 
+# ------------------------------------------
+from vex import *
+import urandom
+import math
+
+# Brain should be defined by default
+brain=Brain()
+controller=Controller()
+
+# wait for rotation sensor to fully initialize
+wait(30, MSEC)
+
+def play_vexcode_sound(sound_name):
+    print("VEXPlaySound:" + sound_name)
+    wait(5, MSEC)
+
+# add a small delay to make sure we don't print in the middle of the REPL header
+wait(200, MSEC)
+# clear the console to make sure we don't have the REPL in the console
+print("\033[2J")
+
+#endregion VEXcode Generated Robot Configuration
+
+# Motors
+left_motor = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
+right_motor = Motor(Ports.PORT10, GearSetting.RATIO_18_1, True)
+lift_motor = Motor(Ports.PORT6, GearSetting.RATIO_18_1, False)
+arm_motor = Motor(Ports.PORT7, GearSetting.RATIO_18_1, False)
+
+# Piston (3-wire port A)
+piston = DigitalOut(brain.three_wire_port.a)
+
+# Drive constants
+wheel_diameter_inch = 4.0
+wheel_circumference = wheel_diameter_inch * math.pi
+
+# Toggle variables
+piston_state = False
+piston_button_latch = False
+
+# Random Seed
+def initializeRandomSeed():
+    wait(100, MSEC)
+    random_val = (
+        brain.battery.voltage(MV)
+        + brain.battery.current(CurrentUnits.AMP)*100
+        + brain.timer.system_high_res()
+    )
+    urandom.seed(int(random_val))
+
+initializeRandomSeed()
+
+# ========== PRE AUTON ==========
+def pre_auton():
+    brain.screen.clear_screen()
+    brain.screen.print("Pre-Autonomous running...")
+    wait(1, SECONDS)
+    brain.screen.clear_screen()
+
+# ========== AUTONOMOUS ==========
+def autonomous():
+    brain.screen.clear_screen()
+    brain.screen.print("Autonomous Running")
+
+    # Drive forward 6 inches
+    degrees = (6 / wheel_circumference) * 360
+    left_motor.spin_for(FORWARD, degrees, DEGREES, False)
+    right_motor.spin_for(FORWARD, degrees, DEGREES, True)
+
+    brain.screen.clear_screen()
+    brain.screen.print("Autonomous Done")
+
+# ========== DRIVER CONTROL ==========
+def usercontrol():
+    global piston_state, piston_button_latch
+
+    brain.screen.clear_screen()
+    brain.screen.print("Willy Mode")
+
+    while True:
+        # ===== DRIVETRAIN =====
+        forward = controller_1.axis3.position()
+        turn = controller_1.axis1.position()
+
+        left_motor.spin(FORWARD, (forward + turn) * 0.6, PERCENT)
+        right_motor.spin(FORWARD, (forward - turn) * 0.6, PERCENT)
+
+        # ===== LIFT =====
+        if controller_1.buttonR1.pressing():
+            lift_motor.spin(FORWARD, 100, PERCENT)
+        elif controller_1.buttonR2.pressing():
+            lift_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            lift_motor.stop(HOLD)
+
+        # ===== ARM =====
+        if controller_1.buttonL1.pressing():
+            arm_motor.spin(FORWARD, 100, PERCENT)
+        elif controller_1.buttonL2.pressing():
+            arm_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            arm_motor.stop(HOLD)
+
+        # ===== PISTON TOGGLE (Button A) =====
+        if controller_1.buttonA.pressing() and not piston_button_latch:
+            piston_state = not piston_state       # flip state
+            piston.set(piston_state)              # activate/deactivate
+            piston_button_latch = True            # lock until released
+
+        if not controller_1.buttonA.pressing():
+            piston_button_latch = False           # reset latch
+
+        wait(20, MSEC)
+
+# Competition setup
+pre_auton()
+competition = Competition(usercontrol, autonomous)
+
+# Keep program alive
+while True:
+    wait(100, MSEC)
